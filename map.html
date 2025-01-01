@@ -1,0 +1,264 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>救援路径规划</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.8/clipboard.min.js"></script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        input[type="text"], select {
+            width: 200px;
+            padding: 5px;
+        }
+
+        button {
+            padding: 5px 10px;
+            margin-top: 10px;
+        }
+
+        #map {
+            width: 100%;
+            height: 770px;
+        }
+
+        #info {
+            background: #fff;
+            box-shadow: 0 0 5px #888;
+            left: 1.5em;
+            padding: 0.5em;
+            position: absolute;
+            top: 1.5em;
+            z-index: 40;
+        }
+
+        /* 模态框样式 */
+        #modal {
+            display: none;
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 50;
+        }
+
+        #modalContent {
+            background: white;
+            padding: 20px;
+            border-radius: 5px;
+            width: 660px;
+            margin: 100px auto;
+        }
+
+        #closeBtn {
+            margin-top: 10px;
+        }
+
+        /* 表格样式 */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        th, td {
+            border: 1px solid #cccccc;
+            padding: 10px;
+            text-align: center;
+            overflow: hidden; 
+        }
+
+            
+        th:nth-child(1), td:nth-child(1) {
+            width: 30%; 
+        }
+
+        th:nth-child(2), td:nth-child(2) {
+            width: 20%; 
+        }
+
+        th:nth-child(3), td:nth-child(3) {
+            width: 20%; 
+        }
+
+        th:nth-child(4), td:nth-child(4) {
+            width: 15%; 
+        }
+
+        th:nth-child(5), td:nth-child(4) {
+            width: 15%; /
+        }
+    </style>
+</head>
+
+<body>
+    <div id="info">
+        <label for="end">火点坐标：</label>
+        <input type="text" id="end" placeholder="请输入火点的经纬度坐标，例如：106.381819,29.835443">
+        <br>
+        <label for="start">消防站：</label>
+        <select id="start">
+            <option value="">请选择消防站</option>
+            <option value="106.414682,29.853917">森林消防</option>
+            <option value="106.4206,29.829773">北碚区消防救援支队</option>
+            <option value="106.406462,29.808653">义乌商贸城微型消防站</option>
+            <option value="106.414673,29.807156">中国消防救援</option>
+            <option value="106.445587,29.822718">云海消防</option>
+        </select>
+        <button id="detailBtn">查看详情</button>
+        <br>
+
+        <button id="confirmBtn">确认</button>
+        <button id="copyLinkBtn">复制链接</button>
+        <div id="shareLink"></div>
+    </div>
+
+    <div id="map"></div>
+
+    <!-- 模态框 -->
+    <div id="modal">
+        <div id="modalContent">
+            <h3>消防站详细信息</h3>
+            <table border="1">
+                <thead>
+                    <tr>
+                        <th>名称</th>
+                        <th>经度</th>
+                        <th>纬度</th>
+                        <th>警力情况</th>
+                        <th>消防车辆数</th>
+                    </tr>
+                </thead>
+                <tbody id="datatable">
+                    <!-- 数据会在这里填充 -->
+                </tbody>
+            </table>
+            <button id="closeBtn">返回</button>
+        </div>
+    </div>
+
+    <script src="https://api.map.baidu.com/api?v=3.0&ak=wGNUIosxjas0KuFGya9GmIHYbXETbhL3&s=1"></script>
+    <script>
+        window.onload = function () {
+            var map = new BMap.Map("map");
+            map.setMapType(BMAP_HYBRID_MAP);
+            map.centerAndZoom(new BMap.Point(106.395752, 29.836487), 14);
+            map.enableScrollWheelZoom(true);
+
+            var fireStations = [
+                { name: "森林消防", point: new BMap.Point(106.414682, 29.853917), policeStrength: "40人", vehicleCount: 6 },
+                { name: "北碚区消防救援支队", point: new BMap.Point(106.4206, 29.829773), policeStrength: "30人", vehicleCount: 5 },
+                { name: "义乌商贸城微型消防站", point: new BMap.Point(106.406462, 29.808653), policeStrength: "10人", vehicleCount: 1 },
+                { name: "中国消防救援", point: new BMap.Point(106.414673, 29.807156), policeStrength: "40人", vehicleCount: 6 },
+                { name: "云海消防", point: new BMap.Point(106.445587, 29.822718), policeStrength: "30人", vehicleCount: 4 }
+            ];
+
+            // 遍历消防站点数组，添加标记到地图上
+            fireStations.forEach(function (station) {
+                var marker = new BMap.Marker(station.point);
+                map.addOverlay(marker);
+                var label = new BMap.Label(station.name, { offset: new BMap.Size(20, -10) });// 创建标记的文字标签
+                marker.setLabel(label);// 设置标记的文字标签
+            });
+
+            // 处理 URL 中的 firePoints 参数
+            const params = new URLSearchParams(window.location.search);
+            const firePointsParam = params.get('firePoints');
+            let firePoints = [];
+
+            if (firePointsParam) {
+                try {
+                    firePoints = JSON.parse(decodeURIComponent(firePointsParam));
+                    // 在地图上标记火点
+                    firePoints.forEach(function (point) {
+                        if (point.lat && point.lng) {
+                            var firePointMarker = new BMap.Marker(new BMap.Point(point.lng, point.lat));
+                            map.addOverlay(firePointMarker);
+                            var fireLabel = new BMap.Label("火点", { offset: new BMap.Size(20, -10) });
+                            firePointMarker.setLabel(fireLabel);
+                        }
+                    });
+                } catch (error) {
+                    console.error("Invalid fire points data:", error);
+                }
+            }
+
+            // 查看详情按钮的点击事件
+            document.getElementById("detailBtn").addEventListener("click", function () {
+                var datatable = document.getElementById("datatable");
+                datatable.innerHTML = ""; // 清空表格
+
+                // 填充消防站详细数据
+                fireStations.forEach(function (station) {
+                    var row = "<tr><td>" + station.name + "</td><td>"
+                        + station.point.lng + "</td><td>"
+                        + station.point.lat + "</td><td>"
+                        + station.policeStrength + "</td><td>"
+                        + station.vehicleCount + "</td></tr>"; // 新增消防车辆数
+                    datatable.innerHTML += row;
+                });
+
+                // 显示模态框
+                document.getElementById("modal").style.display = "block";
+            });
+
+            // 返回按钮的点击事件
+            document.getElementById("closeBtn").addEventListener("click", function () {
+                // 隐藏模态框
+                document.getElementById("modal").style.display = "none";
+            });
+
+            document.getElementById("confirmBtn").addEventListener("click", function () {
+                // 清除之前的路径和之前的分享链接
+                map.clearOverlays(); // 清除地图上所有覆盖物
+                var shareLinkContainer = document.getElementById("shareLink");
+                shareLinkContainer.innerHTML = "";
+
+                var start = document.getElementById("start").value;
+                var end = document.getElementById("end").value;
+
+                // 创建起点和终点的坐标点
+                var startPoint = new BMap.Point(start.split(',')[0], start.split(',')[1]);
+                var endPoint = new BMap.Point(end.split(',')[0], end.split(',')[1]);
+
+                // 获取最优路径
+                var driving = new BMap.DrivingRoute(map, { renderOptions: { map: map, autoViewport: true } });
+                driving.setSearchCompleteCallback(function (results) {
+                    var plan = results.getPlan(0);
+                    var route = plan.getRoute(0);
+                    var routeUrl = "http://api.map.baidu.com/direction?origin=latlng:" + startPoint.lat + "," + startPoint.lng + "|name:起点&destination=latlng:" + endPoint.lat + "," + endPoint.lng + "|name:终点&mode=driving&region=中国&output=html";
+                    var navigationLink = document.createElement("a");
+                    navigationLink.href = routeUrl;
+                    navigationLink.textContent = "导航";
+                    shareLinkContainer.appendChild(navigationLink); // 将链接添加到页面中
+                });
+                driving.search(startPoint, endPoint);
+            });
+
+            // 使用 ClipboardJS 库来实现复制功能
+            var clipboard = new ClipboardJS('#copyLinkBtn', {
+                text: function () {
+                    return document.querySelector('#shareLink a').getAttribute('href');
+                }
+            });
+
+            clipboard.on('success', function (e) {
+                alert('链接已复制成功！可通过Ctrl+V粘贴分享给他人。');
+            });
+
+            clipboard.on('error', function (e) {
+                alert('复制链接失败，请手动复制链接。');
+            });
+        };
+    </script>
+</body>
+</html>

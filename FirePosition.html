@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <title>火点信息</title>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="initial-scale=1.0, user-scalable=no, width=device-width">
+  <link rel="stylesheet" href="https://a.amap.com/jsapi_demos/static/demo-center/css/demo-center.css" />
+  <link rel="stylesheet" href="./FirePosition.css">
+  <script type="text/javascript">
+    window._AMapSecurityConfig = {
+      securityJsCode: 'd0b0ad0bc913ca292b9b0e291d408a56',  //密钥
+    }
+  </script>
+  <script type="text/javascript"
+    src="https://webapi.amap.com/maps?v=2.1Beta&key=7f2d06793f603e96d2cfcd5c3d27886d&plugin=AMap.ControlBar,AMap.InfoWindow"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+
+<body>
+  <div id="title">
+    <h2>火点信息</h2>
+  </div>
+  <div id="search">
+    <input type="file" id="fileInput">
+    <button onclick="markLocations()">地图显示</button>
+  </div>
+  <div id="container">
+    <div id="menu">
+      <h3>火点信息</h3>
+      <table id="dataTable">
+        <thead>
+          <tr>
+            <th></th>
+            <th id="col1">序号</th>
+            <th>经度</th>
+            <th>纬度</th>
+            <th>开始时间</th>
+            <th>深度</th>
+            <th>级数</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script src="./FirePosition.js"></script>
+</body>
+
+</html>
